@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tenispress Kortowo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --clay: #c8522a;
+  --clay-dark: #a03d1a;
+  --clay-light: #e8734a;
+  --chalk: #f4efe6;
+  --green: #2d5a27;
+  --green-light: #4a8a42;
+  --dark: #181818;
+  --mid: #3a3a3a;
+  --light-text: #999;
+  --border: #e2d9cd;
+  --card: #ffffff;
+  --shadow: 0 2px 20px rgba(0,0,0,0.07);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--chalk); color: var(--dark); min-height: 100vh; }
+
+/* ── LOADING ── */
+#loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--dark);
+  position: relative;
+  overflow: hidden;
+}
+#loading-screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(-45deg, transparent, transparent 30px, rgba(200,82,42,0.04) 30px, rgba(200,82,42,0.04) 31px);
+}
+.loader-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(44px, 8vw, 72px);
+  color: var(--clay-light);
+  letter-spacing: 3px;
+  text-align: center;
+  line-height: 1;
+  position: relative;
+}
+.loader-sub {
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  position: relative;
+  margin-top: -12px;
+}
+.loader-spinner {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(200,82,42,0.2);
+  border-top-color: var(--clay-light);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  position: relative;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-text {
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 1px;
+  position: relative;
+}
+
+/* ── ERROR ── */
+#error-screen {
+  display: none;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--dark);
+  padding: 40px 24px;
+  text-align: center;
+}
+.error-icon { font-size: 48px; }
+.error-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: #ff6b6b;
+  letter-spacing: 1px;
+}
+.error-msg { font-size: 13px; color: rgba(255,255,255,0.4); max-width: 420px; line-height: 1.7; }
+.error-code {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  font-family: monospace;
+  max-width: 480px;
+  word-break: break-all;
+}
+.retry-btn {
+  background: var(--clay);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.2s;
+}
+.retry-btn:hover { background: var(--clay-dark); }
+
+/* ── APP ── */
+#app { display: none; }
+
+header {
+  background: var(--clay);
+  position: relative;
+  overflow: hidden;
+}
+.header-texture {
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(255,255,255,0.025) 12px, rgba(255,255,255,0.025) 24px);
+}
+.header-inner {
+  position: relative;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 28px 24px 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.header-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(40px, 7vw, 72px);
+  letter-spacing: 2px;
+  line-height: 0.9;
+  color: white;
+}
+.header-sub {
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.65);
+  margin-top: 8px;
+}
+.header-right { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.header-stat {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  padding: 12px 18px;
+  text-align: center;
+  color: white;
+}
+.header-stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
+.header-stat-lbl { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.65; margin-top: 2px; }
+.refresh-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: white;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.refresh-btn:hover { background: rgba(255,255,255,0.25); }
+.refresh-btn.spinning .btn-icon { animation: spin 0.8s linear infinite; display: inline-block; }
+.last-update { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-top: 4px; text-align: right; }
+
+/* ── TABS ── */
+.tabs { background: var(--dark); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.tabs-inner { max-width: 1140px; margin: 0 auto; display: flex; overflow-x: auto; scrollbar-width: none; }
+.tabs-inner::-webkit-scrollbar { display: none; }
+.tab { padding: 15px 22px; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.38); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; user-select: none; }
+.tab:hover { color: rgba(255,255,255,0.7); }
+.tab.active { color: var(--clay-light); border-bottom-color: var(--clay-light); }
+
+/* ── MAIN ── */
+main { max-width: 1140px; margin: 0 auto; padding: 32px 24px 80px; }
+.section { display: none; }
+.section.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+/* ── CARDS ── */
+.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 22px; }
+.card-header { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; color: var(--clay); }
+.card-body { padding: 22px; }
+.card-body.no-pad { padding: 0; overflow-x: auto; }
+
+/* ── PODIUM ── */
+.podium-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+@media (max-width: 640px) { .podium-grid { grid-template-columns: repeat(2,1fr); } }
+.player-card { border-radius: 16px; padding: 22px 14px 18px; text-align: center; position: relative; overflow: hidden; transition: transform 0.25s; }
+.player-card:hover { transform: translateY(-4px); }
+.pc-r1 { background: linear-gradient(140deg,#c8522a,#e8734a); color:white; }
+.pc-r2 { background: linear-gradient(140deg,#2d5a27,#4a8a42); color:white; }
+.pc-r3 { background: linear-gradient(140deg,#4a6fa5,#6b9fd4); color:white; }
+.pc-r4 { background: linear-gradient(140deg,#6b6b6b,#9b9b9b); color:white; }
+.pc-num { font-family: 'Bebas Neue', sans-serif; font-size: 52px; opacity: 0.15; position: absolute; top: 4px; right: 10px; line-height: 1; }
+.pc-name { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 1px; margin-bottom: 6px; }
+.pc-pts { font-size: 12px; opacity: 0.8; }
+.pc-pts strong { font-family: 'Bebas Neue', sans-serif; font-size: 20px; display: block; opacity: 1; margin-top: 2px; }
+.pc-wins { margin-top: 8px; font-size: 11px; opacity: 0.65; }
+
+/* ── TABLE ── */
+table { width: 100%; border-collapse: collapse; }
+th { background: var(--dark); color: rgba(255,255,255,0.7); padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; }
+td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #faf7f3; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.b1 { background:#fff0eb; color:var(--clay); }
+.b2 { background:#eef4ed; color:var(--green); }
+.b3 { background:#edf2fa; color:#4a6fa5; }
+.b4 { background:#efefef; color:#666; }
+.bnd { color:#bbb; font-style:italic; font-size:12px; }
+
+/* ── STAT BARS ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+.srow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.srow:last-child { margin-bottom: 0; }
+.srow-name { font-size: 13px; font-weight: 500; width: 58px; flex-shrink: 0; }
+.srow-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.srow-bar { height: 100%; border-radius: 3px; }
+.srow-val { font-family: 'Bebas Neue', sans-serif; font-size: 18px; width: 28px; text-align: right; }
+
+/* ── SO ── */
+.so-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.so-box { background: var(--chalk); border-radius: 12px; padding: 18px; }
+.so-name { font-family: 'Bebas Neue', sans-serif; font-size: 20px; margin-bottom: 12px; }
+.so-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.so-lbl { font-size: 11px; color: var(--light-text); }
+.so-val { font-family: 'Bebas Neue', sans-serif; font-size: 20px; }
+.sv { color: var(--clay); } .ov { color: var(--green); }
+
+/* ── H2H ── */
+.h2h-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.h2h-box { background: var(--chalk); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+.h2h-name { font-size: 13px; font-weight: 600; }
+.h2h-score { font-family: 'Bebas Neue', sans-serif; font-size: 26px; padding: 0 6px; }
+.h2h-sep { font-size: 9px; color: var(--light-text); letter-spacing: 1px; }
+
+/* ── PULA ── */
+.pula-hero { background: linear-gradient(140deg, var(--green), var(--green-light)); color: white; border-radius: 18px; padding: 36px; text-align: center; margin-bottom: 22px; }
+.pula-big { font-family: 'Bebas Neue', sans-serif; font-size: 80px; line-height: 1; }
+.pula-lbl { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.65; margin-top: 4px; }
+.pula-note { font-size: 13px; opacity: 0.6; margin-top: 12px; }
+
+/* ── INSTRUKCJA (tylko dla Irka) ── */
+.instruction-box {
+  background: var(--dark);
+  color: white;
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.instruction-box::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(-45deg, transparent, transparent 20px, rgba(200,82,42,0.05) 20px, rgba(200,82,42,0.05) 21px);
+}
+.instruction-box h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--clay-light);
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.instruction-steps { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.6;
+}
+.step-num {
+  background: var(--clay);
+  color: white;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step code {
+  background: rgba(255,255,255,0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--clay-light);
+  font-family: monospace;
+}
+.github-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  font-family: monospace;
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+.section-intro { font-size: 13px; color: var(--light-text); margin-bottom: 18px; line-height: 1.7; }
+.empty { text-align: center; padding: 60px 24px; color: var(--light-text); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loader-logo">Tenispress<br>Kortowo</div>
+  <div class="loader-sub">Ranking 2025–2026</div>
+  <div class="loader-spinner"></div>
+  <div class="loader-text" id="loader-text">Pobieram dane z GitHub…</div>
+</div>
+
+<!-- ERROR -->
+<div id="error-screen">
+  <div class="error-icon">🎾</div>
+  <div class="error-title">Nie można pobrać danych</div>
+  <div class="error-msg" id="error-msg">Sprawdź czy plik Excel jest wgrany do repozytorium GitHub.</div>
+  <div class="error-code" id="error-url"></div>
+  <button class="retry-btn" onclick="location.reload()">🔄 Spróbuj ponownie</button>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-texture"></div>
+    <div class="header-inner">
+      <div>
+        <div class="header-title">Tenispress<br>Kortowo</div>
+        <div class="header-sub" id="hdr-sub">Ranking 2025–2026</div>
+      </div>
+      <div class="header-right">
+        <div class="header-stat">
+          <div class="header-stat-val" id="hdr-sesje">–</div>
+          <div class="header-stat-lbl">Sesji</div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-val" id="hdr-pula">–</div>
+          <div class="header-stat-lbl">Pula</div>
+        </div>
+        <div>
+          <button class="refresh-btn" id="refresh-btn" onclick="fetchAndRender()">
+            <span class="btn-icon">🔄</span> Odśwież
+          </button>
+          <div class="last-update" id="last-update"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tabs-inner">
+      <div class="tab active" data-tab="ranking">🏆 Ranking</div>
+      <div class="tab" data-tab="wyniki">📅 Wyniki</div>
+      <div class="tab" data-tab="statystyki">📊 Statystyki</div>
+      <div class="tab" data-tab="h2h">⚔️ Pojedynki</div>
+      <div class="tab" data-tab="pula">💰 Pula</div>
+      <div class="tab" data-tab="instrukcja">⚙️ Aktualizacja</div>
+    </div>
+  </div>
+
+  <main>
+    <div id="tab-ranking" class="section active"></div>
+    <div id="tab-wyniki" class="section"></div>
+    <div id="tab-statystyki" class="section"></div>
+    <div id="tab-h2h" class="section"></div>
+    <div id="tab-pula" class="section"></div>
+    <div id="tab-instrukcja" class="section"></div>
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  KONFIGURACJA — zmień jeśli repo/plik ma inną nazwę
+// ═══════════════════════════════════════════════════
+const CONFIG = {
+  owner: 'istam01',
+  repo:  'tenispress',           // nazwa repozytorium — ustaw po założeniu
+  file:  'Tenispress_RMI_makro_2026.xlsm',  // nazwa pliku w repo
+  branch: 'main'
+};
+
+// URL do raw pliku na GitHub
+function getFileUrl() {
+  return `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${encodeURIComponent(CONFIG.file)}`;
+}
+
+// ═══════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const PLAYER_COLORS = ['#c8522a','#2d5a27','#4a6fa5','#888888'];
+const PLACE_CLS = ['b1','b2','b3','b4'];
+
+function placeBadge(p) {
+  if (!p || String(p).trim() === '' || String(p).toUpperCase() === 'ND')
+    return '<span class="bnd">ND</span>';
+  const s = String(p).replace(/,,/g,'/');
+  const n = parseInt(String(p));
+  const cls = n===1?'b1':n===2?'b2':n===3?'b3':'b4';
+  return `<span class="badge ${cls}">${s}</span>`;
+}
+function isND(v) { return !v || String(v).trim()==='' || String(v).toUpperCase()==='ND'; }
+
+// ═══════════════════════════════════════════════════
+//  FETCH + PARSE
+// ═══════════════════════════════════════════════════
+async function fetchAndRender() {
+  const btn = $('refresh-btn');
+  btn.classList.add('spinning');
+  $('loader-text').textContent = 'Pobieram dane z GitHub…';
+
+  const url = getFileUrl();
+  try {
+    const res = await fetch(url + '?t=' + Date.now()); // cache bust
+    if (!res.ok) throw new Error(`HTTP ${res.status} — sprawdź nazwę repo i pliku`);
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const data = parseWorkbook(wb);
+    renderApp(data);
+
+    $('loading-screen').style.display = 'none';
+    $('error-screen').style.display = 'none';
+    $('app').style.display = 'block';
+    $('last-update').textContent = 'Dane z: ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+  } catch(err) {
+    console.error(err);
+    if ($('app').style.display === 'block') {
+      // Already showing app — just show toast
+      alert('Nie udało się odświeżyć: ' + err.message);
+    } else {
+      $('loading-screen').style.display = 'none';
+      $('error-screen').style.display = 'flex';
+      $('error-msg').textContent = err.message;
+      $('error-url').textContent = url;
+    }
+  }
+  btn.classList.remove('spinning');
+}
+
+// ═══════════════════════════════════════════════════
+//  PARSER
+// ═══════════════════════════════════════════════════
+function sheetToArr(wb, name) {
+  const ws = wb.Sheets[name];
+  if (!ws) return null;
+  return XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:false });
+}
+function sheetToArrRaw(wb, name) {
+  const ws = wb.Sheets[name];
+  if (!ws) return null;
+  return XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:true });
+}
+
+function parseWorkbook(wb) {
+  const data = { players:[], sessions:[], summary:{}, pula:{total:0,start:0,entries:[]}, h2h:[], so:[] };
+
+  // ── Wyniki ──
+  const wyniki = sheetToArr(wb,'Wyniki');
+  const wynikiRaw = sheetToArrRaw(wb,'Wyniki');
+  if (!wyniki) throw new Error('Brak arkusza "Wyniki"');
+
+  let hdrIdx = -1;
+  for (let i=0;i<wyniki.length;i++) {
+    if (wyniki[i]?.some(c => c && String(c).toLowerCase().includes('wygrane'))) { hdrIdx=i; break; }
+  }
+
+  let players = [];
+  if (hdrIdx>0) {
+    const nameRow = wyniki[hdrIdx-1];
+    for (let c=2;c<nameRow.length;c+=3) {
+      const v = nameRow[c];
+      if (v && String(v).trim() && !String(v).toLowerCase().includes('uwagi')) players.push(String(v).trim());
+    }
+  }
+  if (players.length===0) players=['Irek','Rysiek','Marcin','Piotr'];
+  data.players = players;
+
+  const sessions=[];
+  for (let i=hdrIdx+1;i<wyniki.length;i++) {
+    const row=wyniki[i], rowRaw=wynikiRaw[i];
+    if (!row||!row[1]) continue;
+    if (String(row[1]||'').trim().toLowerCase().includes('razem')) break;
+
+    let dateVal=rowRaw?rowRaw[1]:null, dateStr='';
+    if (dateVal instanceof Date) dateStr=dateVal.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    else if (typeof dateVal==='number') dateStr=new Date(Math.round((dateVal-25569)*86400*1000)).toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    else dateStr=String(row[1]||'').trim();
+    if (!dateStr) continue;
+
+    const sess={date:dateStr,players:{}};
+    players.forEach((pl,pi)=>{
+      const b=2+pi*3;
+      sess.players[pl]={ mecze:parseInt(row[b])||0, miejsce:isND(row[b+1])?'ND':row[b+1], pts:parseInt(row[b+2])||0 };
+    });
+    sessions.push(sess);
+  }
+  data.sessions=sessions;
+
+  // ── Podsumowanie ──
+  const podsRaw=sheetToArr(wb,'Podsumowanie');
+  if (podsRaw) {
+    const sumMap={};
+    podsRaw.forEach(row=>{
+      if (!row) return;
+      const key=String(row[1]||'').trim(), val=parseInt(row[2]);
+      if (key&&!isNaN(val)) sumMap[key]=val;
+    });
+    data.summary=sumMap;
+
+    const h2hSeen={};
+    podsRaw.forEach(row=>{
+      if (!row) return;
+      const key=String(row[1]||'').trim(), val=parseInt(row[2]);
+      if (isNaN(val)) return;
+      const m=key.match(/^(.+?)[\s]*[-–][\s]*(.+)$/);
+      if (m) {
+        const a=m[1].trim(), b=m[2].trim();
+        const pk=[a,b].sort().join('|');
+        if (!h2hSeen[pk]) h2hSeen[pk]={};
+        h2hSeen[pk][a]=val; if (!h2hSeen[pk][b]) h2hSeen[pk][b]=0;
+      }
+    });
+    data.h2h=Object.entries(h2hSeen).map(([pair,scores])=>{
+      const [a,b]=pair.split('|');
+      return (scores[a]!==undefined&&scores[b]!==undefined)?{a,b,sa:scores[a],sb:scores[b]}:null;
+    }).filter(Boolean);
+
+    const so={};
+    podsRaw.forEach(row=>{
+      if (!row) return;
+      const key=String(row[1]||'').trim(), val=parseInt(row[2]);
+      if (isNaN(val)) return;
+      const ms=key.match(/^(\w+)\s*\(([so])\)$/i);
+      if (ms) { const pl=ms[1],t=ms[2].toLowerCase(); if (!so[pl]) so[pl]={s:0,o:0}; so[pl][t]=val; }
+    });
+    data.so=Object.entries(so).map(([name,v])=>({name,s:v.s||0,o:v.o||0}));
+  }
+
+  // ── Pula ──
+  const pulaRaw=sheetToArrRaw(wb,'Pula');
+  if (pulaRaw) {
+    let total=0,start=0; const entries=[];
+    pulaRaw.forEach(row=>{
+      if (!row) return;
+      const lbl=String(row[2]||'').trim().toLowerCase();
+      if (lbl.includes('kwota wyj')) start=parseInt(row[3])||0;
+      if (lbl.includes('razem w puli')) total=parseInt(row[3])||0;
+      const gracz=String(row[3]||'').trim(), kwota=parseInt(row[4]);
+      const dc=row[2];
+      if (!isNaN(kwota)&&kwota>0&&gracz&&gracz.length<20&&!gracz.toLowerCase().includes('kto')&&!gracz.toLowerCase().includes('kwota')) {
+        let ds='';
+        if (dc instanceof Date) ds=dc.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+        else if (typeof dc==='number') ds=new Date(Math.round((dc-25569)*86400*1000)).toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+        entries.push({date:ds,gracz,kwota});
+      }
+    });
+    data.pula={total,start,entries};
+  }
+  return data;
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════
+function renderApp(data) {
+  const {players,sessions,summary,pula,h2h,so}=data;
+  const totals={};
+  players.forEach(pl=>{
+    totals[pl]={pts:0,mecze:0,sesje:sessions.filter(s=>s.players[pl]?.miejsce!=='ND').length};
+    sessions.forEach(s=>{ const pd=s.players[pl]; if(pd){totals[pl].pts+=pd.pts;totals[pl].mecze+=pd.mecze;} });
+  });
+  const ranked=[...players].sort((a,b)=>totals[b].pts-totals[a].pts);
+
+  $('hdr-sub').textContent=ranked.join(' · ');
+  $('hdr-sesje').textContent=sessions.length;
+  $('hdr-pula').textContent=pula.total?pula.total+' zł':'–';
+
+  renderRanking(ranked,totals,sessions,players);
+  renderWyniki(sessions,players,totals);
+  renderStatystyki(summary,so,players,totals);
+  renderH2H(h2h,players);
+  renderPula(pula);
+  renderInstrukcja();
+}
+
+function buildLineChart(sessions,players,totals) {
+  if (sessions.length<2) return '<p style="color:var(--light-text);font-size:13px">Za mało danych.</p>';
+  const n=sessions.length, colors=PLAYER_COLORS;
+  const cumul={}; players.forEach(pl=>cumul[pl]=0);
+  const rows=sessions.map(s=>{
+    const r={date:s.date};
+    players.forEach(pl=>{cumul[pl]+=(s.players[pl]?.pts||0);r[pl]=cumul[pl];});
+    return r;
+  });
+  const maxVal=Math.max(...players.map(pl=>cumul[pl]));
+  const W=600,H=220,pad={l:38,r:100,t:12,b:32};
+  const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  for (let i=0;i<=4;i++) {
+    const y=pad.t+iH-iH*i/4, val=Math.round(maxVal*i/4);
+    svg+=`<line x1="${pad.l}" y1="${y}" x2="${pad.l+iW}" y2="${y}" stroke="#e2d9cd" stroke-width="0.8"/>`;
+    svg+=`<text x="${pad.l-4}" y="${y+4}" text-anchor="end" font-size="9" fill="#aaa" font-family="DM Sans">${val}</text>`;
+  }
+  rows.forEach((r,i)=>{
+    const x=pad.l+iW*i/(n-1);
+    svg+=`<text x="${x}" y="${pad.t+iH+16}" text-anchor="middle" font-size="8" fill="#aaa" font-family="DM Sans">${r.date}</text>`;
+  });
+  players.forEach((pl,pi)=>{
+    const col=colors[pi%colors.length];
+    let path='';
+    rows.forEach((r,i)=>{
+      const x=pad.l+iW*i/(n-1), y=pad.t+iH-iH*r[pl]/maxVal;
+      path+=(i===0?'M':'L')+`${x.toFixed(1)},${y.toFixed(1)} `;
+    });
+    svg+=`<path d="${path.trim()}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    rows.forEach((r,i)=>{
+      const x=pad.l+iW*i/(n-1), y=pad.t+iH-iH*r[pl]/maxVal;
+      svg+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${col}" stroke="white" stroke-width="1.5"/>`;
+    });
+    const lx=pad.l+iW, ly=pad.t+iH-iH*cumul[pl]/maxVal;
+    svg+=`<text x="${lx+6}" y="${ly+4}" font-size="10" fill="${col}" font-family="Bebas Neue,sans-serif">${pl} ${cumul[pl]}</text>`;
+  });
+  svg+='</svg>';
+  return svg;
+}
+
+function renderRanking(ranked,totals,sessions,players) {
+  const rankCls=['pc-r1','pc-r2','pc-r3','pc-r4'];
+  const podium=ranked.map((pl,i)=>`
+    <div class="player-card ${rankCls[i]||'pc-r4'}">
+      <div class="pc-num">${i+1}</div>
+      <div class="pc-name">${pl}</div>
+      <div class="pc-pts">Punkty<strong>${totals[pl].pts}</strong></div>
+      <div class="pc-wins">${totals[pl].mecze} wygranych meczów</div>
+    </div>`).join('');
+
+  const tableRows=ranked.map((pl,i)=>`<tr>
+    <td><span class="badge ${PLACE_CLS[i]||'b4'}">${i+1}</span></td>
+    <td style="font-weight:600">${pl}</td>
+    <td>${totals[pl].sesje}</td>
+    <td>${totals[pl].mecze}</td>
+    <td style="font-weight:700">${totals[pl].pts}</td>
+    <td>${totals[pl].sesje?(totals[pl].pts/totals[pl].sesje).toFixed(1):'–'}</td>
+  </tr>`).join('');
+
+  $('tab-ranking').innerHTML=`
+    <div class="podium-grid">${podium}</div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Punkty — przebieg sezonu</div><div style="font-size:11px;color:var(--light-text)">skumulowane</div></div>
+      <div class="card-body" style="overflow-x:auto">${buildLineChart(sessions,players,totals)}</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Tabela końcowa</div></div>
+      <div class="card-body no-pad">
+        <table><thead><tr><th>#</th><th>Gracz</th><th>Sesje</th><th>Wygrane mecze</th><th>Pkt</th><th>Śr/sesję</th></tr></thead>
+        <tbody>${tableRows}</tbody></table>
+      </div>
+    </div>`;
+}
+
+function renderWyniki(sessions,players,totals) {
+  if (!sessions.length) { $('tab-wyniki').innerHTML='<div class="empty"><div class="empty-icon">📋</div>Brak danych</div>'; return; }
+  const cols=players.map((pl,pi)=>`<th colspan="3" style="text-align:center;border-left:3px solid ${PLAYER_COLORS[pi%4]}40;color:${PLAYER_COLORS[pi%4]}">${pl}</th>`).join('');
+  const subcols=players.map(()=>`<th>Mecze</th><th>Miejsce</th><th>Pkt</th>`).join('');
+  let rows=sessions.map(s=>{
+    const cells=players.map((pl,pi)=>{
+      const c=PLAYER_COLORS[pi%4], pd=s.players[pl]||{mecze:0,miejsce:'ND',pts:0};
+      return `<td style="border-left:3px solid ${c}18">${pd.miejsce==='ND'?'–':pd.mecze}</td><td>${placeBadge(pd.miejsce)}</td><td><b>${pd.pts}</b></td>`;
+    }).join('');
+    return `<tr><td style="font-weight:600;white-space:nowrap">${s.date}</td>${cells}</tr>`;
+  }).join('');
+  const totCells=players.map((pl,pi)=>{
+    const c=PLAYER_COLORS[pi%4];
+    return `<td style="border-left:3px solid ${c}18">${totals[pl].mecze}</td><td>–</td><td style="color:${c};font-weight:700">${totals[pl].pts}</td>`;
+  }).join('');
+  rows+=`<tr style="background:#faf7f3;font-weight:600"><td>Razem</td>${totCells}</tr>`;
+  $('tab-wyniki').innerHTML=`
+    <p class="section-intro">Punktacja: 1. miejsce = 7 pkt, 2. = 5 pkt, 3. = 3 pkt, 4. = 1 pkt + wygrane mecze. ND = nieobecny.</p>
+    <div class="card"><div class="card-body no-pad">
+      <table><thead><tr><th>Data</th>${cols}</tr><tr><th>–</th>${subcols}</tr></thead><tbody>${rows}</tbody></table>
+    </div></div>`;
+}
+
+function renderStatystyki(summary,so,players,totals) {
+  function statBlock(title,items) {
+    if (!items||!items.length) return '';
+    const max=Math.max(...items.map(x=>x.val));
+    const rows=items.map((x,i)=>{
+      const col=PLAYER_COLORS[i%4], pct=max>0?(x.val/max*100).toFixed(0):0;
+      return `<div class="srow">
+        <div class="srow-name">${x.name}</div>
+        <div class="srow-bar-wrap"><div class="srow-bar" style="width:${pct}%;background:${col}"></div></div>
+        <div class="srow-val" style="color:${col}">${x.val}</div>
+      </div>`;
+    }).join('');
+    return `<div class="card"><div class="card-header"><div class="card-title">${title}</div></div><div class="card-body">${rows}</div></div>`;
+  }
+  function extractStat(sfx) {
+    return players.map(pl=>{
+      const key=Object.keys(summary).find(k=>k.toLowerCase().startsWith(pl.toLowerCase())&&k.toLowerCase().includes(sfx));
+      return {name:pl,val:key?summary[key]:(totals[pl]?.mecze||0)};
+    }).sort((a,b)=>b.val-a.val);
+  }
+  const fallback=players.map(pl=>({name:pl,val:totals[pl].mecze})).sort((a,b)=>b.val-a.val);
+  const w0=extractStat('w(0)'), w15=extractStat('w(15)'), w30=extractStat('w(30)'), wz=extractStat('w(z)');
+
+  let soHTML='';
+  if (so&&so.length) {
+    soHTML=`<div class="card"><div class="card-header"><div class="card-title">Serwis vs Odbiór</div></div><div class="card-body">
+      <div class="so-wrap">${so.sort((a,b)=>(b.s+b.o)-(a.s+a.o)).map(p=>{
+        const tot=p.s+p.o, sp=tot>0?Math.round(p.s/tot*100):0;
+        const col=PLAYER_COLORS[players.indexOf(p.name)%4]||'#888';
+        return `<div class="so-box">
+          <div class="so-name" style="color:${col}">${p.name}</div>
+          <div class="so-row"><span class="so-lbl">🎾 Serwis</span><span class="so-val sv">${p.s} <small style="font-size:11px;color:#aaa">(${sp}%)</small></span></div>
+          <div class="so-row"><span class="so-lbl">🔄 Odbiór</span><span class="so-val ov">${p.o} <small style="font-size:11px;color:#aaa">(${100-sp}%)</small></span></div>
+        </div>`;
+      }).join('')}</div>
+    </div></div>`;
+  }
+
+  $('tab-statystyki').innerHTML=`
+    <div class="two-col">${statBlock('Wygrane do 0',w0)}${statBlock('Wygrane do 15',w15)}</div>
+    <div class="two-col">${statBlock('Wygrane do 30',w30)}${statBlock('🌟 Złota piłka',wz)}</div>
+    ${soHTML}`;
+}
+
+function renderH2H(h2h,players) {
+  if (!h2h||!h2h.length) { $('tab-h2h').innerHTML='<div class="empty"><div class="empty-icon">⚔️</div>Brak danych H2H</div>'; return; }
+  const boxes=h2h.map(({a,b,sa,sb})=>{
+    const colA=PLAYER_COLORS[players.indexOf(a)%4]||'#888', colB=PLAYER_COLORS[players.indexOf(b)%4]||'#888';
+    return `<div class="h2h-box">
+      <div class="h2h-name" style="color:${sa>sb?colA:'var(--dark)'}">${a}</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <div class="h2h-score" style="color:${colA}">${sa}</div>
+        <div class="h2h-sep">vs</div>
+        <div class="h2h-score" style="color:${colB}">${sb}</div>
+      </div>
+      <div class="h2h-name" style="text-align:right;color:${sb>sa?colB:'var(--dark)'}">${b}</div>
+    </div>`;
+  }).join('');
+  $('tab-h2h').innerHTML=`
+    <p class="section-intro">Bilans bezpośrednich pojedynków — liczba wygranych meczów jeden na jeden.</p>
+    <div class="card"><div class="card-header"><div class="card-title">Wyniki bezpośrednie</div></div>
+    <div class="card-body"><div class="h2h-wrap">${boxes}</div></div></div>`;
+}
+
+function renderPula(pula) {
+  const byPlayer={};
+  pula.entries.forEach(e=>{ byPlayer[e.gracz]=(byPlayer[e.gracz]||0)+e.kwota; });
+  const rows=pula.entries.map((e,i)=>`<tr><td style="color:var(--light-text)">${i+1}</td><td>${e.date}</td><td style="font-weight:600">${e.gracz}</td><td>${e.kwota} zł</td></tr>`).join('');
+  const byRows=Object.entries(byPlayer).sort((a,b)=>b[1]-a[1]).map(([pl,s])=>`<tr><td style="font-weight:600">${pl}</td><td>${s} zł</td></tr>`).join('');
+  const total=pula.total||(pula.start+pula.entries.reduce((s,e)=>s+e.kwota,0));
+  $('tab-pula').innerHTML=`
+    <div class="pula-hero">
+      <div class="pula-big">${total} zł</div>
+      <div class="pula-lbl">Całkowita pula nagród</div>
+      ${pula.start?`<div class="pula-note">Kwota startowa: ${pula.start} zł · ${pula.entries.length} wpłat</div>`:''}
+    </div>
+    <div class="two-col">
+      <div class="card"><div class="card-header"><div class="card-title">Wpłaty wg gracza</div></div>
+        <div class="card-body no-pad"><table><thead><tr><th>Gracz</th><th>Łącznie</th></tr></thead><tbody>${byRows}</tbody></table></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">Liczba wpłat</div></div>
+        <div class="card-body" style="display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:80px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:64px;color:var(--clay);line-height:1">${pula.entries.length}</div>
+          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--light-text)">Wpisów w historii</div>
+        </div></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">Historia wpłat</div></div>
+      <div class="card-body no-pad" style="max-height:420px;overflow-y:auto">
+        <table><thead><tr><th>#</th><th>Data</th><th>Gracz</th><th>Kwota</th></tr></thead><tbody>${rows}</tbody></table>
+      </div></div>`;
+}
+
+function renderInstrukcja() {
+  const fileUrl = getFileUrl();
+  const repoUrl = `https://github.com/${CONFIG.owner}/${CONFIG.repo}`;
+  $('tab-instrukcja').innerHTML=`
+    <div class="instruction-box">
+      <h3>⚙️ Jak aktualizować wyniki (tylko dla Irka)</h3>
+      <div class="instruction-steps">
+        <div class="step"><div class="step-num">1</div><div>Uzupełnij plik Excel na swoim komputerze — tak jak dotychczas.</div></div>
+        <div class="step"><div class="step-num">2</div><div>Wejdź na repozytorium GitHub: <a href="${repoUrl}" target="_blank" style="color:var(--clay-light)">${repoUrl}</a></div></div>
+        <div class="step"><div class="step-num">3</div><div>Kliknij nazwę pliku <code>${CONFIG.file}</code>, potem ikonę ołówka ✏️ → <em>„Upload files"</em> lub przeciągnij nowy plik w to miejsce.</div></div>
+        <div class="step"><div class="step-num">4</div><div>Kliknij <code>Commit changes</code> — gotowe! Strona kolegów po kliknięciu 🔄 Odśwież pokaże nowe dane.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Konfiguracja techniczna</div></div>
+      <div class="card-body">
+        <table>
+          <tr><td style="color:var(--light-text);width:140px">Właściciel repo</td><td style="font-weight:600">${CONFIG.owner}</td></tr>
+          <tr><td style="color:var(--light-text)">Repozytorium</td><td style="font-weight:600">${CONFIG.repo}</td></tr>
+          <tr><td style="color:var(--light-text)">Plik Excel</td><td style="font-weight:600">${CONFIG.file}</td></tr>
+          <tr><td style="color:var(--light-text)">Gałąź</td><td style="font-weight:600">${CONFIG.branch}</td></tr>
+          <tr><td style="color:var(--light-text)">URL pliku</td><td style="font-size:11px;word-break:break-all;color:var(--light-text)">${fileUrl}</td></tr>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    this.classList.add('active');
+    $('tab-'+this.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════════════
+fetchAndRender();
+</script>
+</body>
+</html>
